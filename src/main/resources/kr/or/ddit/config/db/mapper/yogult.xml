@@ -4,29 +4,49 @@
   "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="yogult">
 
-	  <select id="getCycleList" resultType="cycleVO">
-	  		select * from cycle
-	  </select>
-	  
-	  <insert id="insertDaily" parameterType="dailyVO">
-	  		insert into daily
-	  			values (#{cid}, #{pid}, #{dt}, #{cnt})
-	  </insert>
-	  
-	  <!--
-	  	 입력하려고하는 데이터가 존재하면 update, 없으면 insert 
-	  	 입력하려는 데이터 존재여부 확인
-	  -->
-	  <insert id="mergeDaily" parameterType="dailyVO">
+	<select id="getCycleList" resultType="cycleVO">
+		select * from cycle
+	</select>
+
+	<insert id="insertDaily" parameterType="dailyVO">
+		insert into daily
+		values (#{cid}, #{pid}, #{dt}, #{cnt})
+	</insert>
+
+	<!-- 입력하려고하는 데이터가 존재하면 update, 없으면 insert 입력하려는 데이터 존재여부 확인 -->
+	<insert id="mergeDaily" parameterType="dailyVO">
 		merge into daily
-			using dual on(
-				daily.cid = 1 and
-				daily.pid = 100 and
-				daily.dt = '20190306')
+		using dual on(
+		daily.cid = 1 and
+		daily.pid = 100 and
+		daily.dt = '20190306')
 		<!-- matched : 해당 데이터가 존재 -->
 		when matched then update set
-			cnt = #{cnt}
+		cnt = #{cnt}
 		when not matched then insert
-			(cid, pid, dt, cnt) values (#{cid}, #{pid}, #{dt}, #{cnt})
-	  </insert>
+		(cid, pid, dt, cnt) values (#{cid}, #{pid}, #{dt}, #{cnt})
+	</insert>
+
+	<!-- 일실적 일괄 삭제 -->
+	<delete id="deleteDailyYm" parameterType="string">
+		delete daily where dt like #{ym} || '%'
+	</delete>
+
+	<!-- &lt; = '<' -->
+	<!-- 일실적 입력 -->
+	<insert id="dailyBatchYm" parameterType="string">
+		insert into daily
+		select cycle.cid, cycle.pid, cal.dt, cycle.cnt
+		from cycle,
+
+			(select to_char(to_date(#{ym}|| '01', 'yyyyMMdd') + (level - 1), 'd') day,
+			to_char(to_date(#{ym}|| '01', 'yyyyMMdd') + (level - 1),
+			'yyyyMMdd') dt
+			from dual
+			connect by level &lt;= last_day(to_date(#{ym}, 'yyyyMM'))
+			- to_date(#{ym} || '01', 'yyyyMMdd') + 1) cal
+			
+		where cycle.day = cal.day
+	</insert>
+
 </mapper>
